@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "beaconrework:block/reworked_beacon"
+    }
+  }
+}

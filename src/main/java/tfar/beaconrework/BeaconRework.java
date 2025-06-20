@@ -9,12 +9,16 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.InterModComms;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import org.slf4j.Logger;
+import tfar.beaconrework.datagen.ModDataGenerator;
 
 import java.util.stream.Collectors;
 
@@ -31,11 +35,17 @@ public class BeaconRework {
 
         // Register the setup method for modloading
         bus.addListener(this::setup);
+        bus.addListener(ModDataGenerator::gatherData);
+
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER,BeaconReworkConfig.SERVER_SPEC);
 
         // Register ourselves for server and other game events we are interested in
         bus.addGenericListener(Block.class,this::registerBlock);
         bus.addGenericListener(Item.class,this::registerItem);
         bus.addGenericListener(BlockEntityType.class,this::registerBlockEntity);
+        if (FMLEnvironment.dist.isClient()) {
+            BeaconReworkClient.init(bus);
+        }
     }
 
     void registerBlock(RegistryEvent.Register<Block> event) {
