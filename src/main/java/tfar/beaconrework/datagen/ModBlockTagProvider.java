@@ -16,6 +16,10 @@ public class ModBlockTagProvider extends BlockTagsProvider {
 
     @Override
     protected void addTags() {
-        tag(BlockTags.BEACON_BASE_BLOCKS).add(Blocks.COPPER_BLOCK);
+
+        tag(BeaconRework.FULL_COPPER_BLOCKS).add(Blocks.COPPER_BLOCK,Blocks.EXPOSED_COPPER,Blocks.WEATHERED_COPPER,Blocks.OXIDIZED_COPPER
+        ,Blocks.WAXED_COPPER_BLOCK,Blocks.WAXED_EXPOSED_COPPER,Blocks.WAXED_WEATHERED_COPPER,Blocks.WAXED_OXIDIZED_COPPER);
+
+        tag(BlockTags.BEACON_BASE_BLOCKS).addTag(BeaconRework.FULL_COPPER_BLOCKS);
     }
 }

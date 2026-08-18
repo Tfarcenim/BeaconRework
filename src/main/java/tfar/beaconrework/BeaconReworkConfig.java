@@ -1,11 +1,7 @@
 package tfar.beaconrework;
 
-import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.ForgeConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
-
-import java.util.List;
 
 public class BeaconReworkConfig {
 
@@ -26,12 +22,10 @@ public class BeaconReworkConfig {
     }
 
     public static class Server {
-        public final ForgeConfigSpec.BooleanValue antisharing;
 
 
         Server(ForgeConfigSpec.Builder builder) {
             builder.push("general");
-            antisharing = builder.define("antisharing",true);
             builder.pop();
         }
     }

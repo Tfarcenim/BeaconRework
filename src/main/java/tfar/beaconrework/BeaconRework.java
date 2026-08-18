@@ -1,26 +1,43 @@
 package tfar.beaconrework;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
+import net.minecraft.world.entity.ai.village.poi.PoiRecord;
+import net.minecraft.world.entity.ai.village.poi.PoiType;
+import net.minecraft.world.entity.animal.Bee;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.living.LivingSpawnEvent;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.InterModComms;
-import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
-import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import org.slf4j.Logger;
 import tfar.beaconrework.datagen.ModDataGenerator;
 
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(BeaconRework.MOD_ID)
@@ -28,6 +45,8 @@ public class BeaconRework {
     public static final String MOD_ID = "beaconrework";
     // Directly reference a slf4j logger
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final TagKey<Block> FULL_COPPER_BLOCKS = BlockTags.create(new ResourceLocation("forge","full_copper_blocks"));
 
     public BeaconRework() {
 
@@ -37,24 +56,80 @@ public class BeaconRework {
         bus.addListener(this::setup);
         bus.addListener(ModDataGenerator::gatherData);
 
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER,BeaconReworkConfig.SERVER_SPEC);
+        //ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER,BeaconReworkConfig.SERVER_SPEC);
 
         // Register ourselves for server and other game events we are interested in
         bus.addGenericListener(Block.class,this::registerBlock);
         bus.addGenericListener(Item.class,this::registerItem);
+        bus.addGenericListener(PoiType.class,this::registerPOIType);
         bus.addGenericListener(BlockEntityType.class,this::registerBlockEntity);
+        bus.addGenericListener(MobEffect.class,this::registerMobEffect);
+        MinecraftForge.EVENT_BUS.addListener(this::spawn);
+        MinecraftForge.EVENT_BUS.addListener(this::livingTick);
         if (FMLEnvironment.dist.isClient()) {
             BeaconReworkClient.init(bus);
         }
+    }
+
+    void livingTick(LivingEvent.LivingUpdateEvent event) {
+        LivingEntity entity = event.getEntityLiving();
+        if (entity.level.isClientSide || entity.tickCount % 20 != 0 || !(entity instanceof Enemy)) {
+            return;
+        }
+
+        boolean beacon = findBeacon((ServerLevel) entity.level,entity.getX(), entity.getY(), entity.getZ());
+        if (beacon) {
+            entity.hurt(DamageSource.MAGIC, 4.0F);
+        }
+    }
+
+    void spawn(LivingSpawnEvent.CheckSpawn event) {
+        LivingEntity livingEntity = event.getEntityLiving();
+        MobSpawnType spawnType = event.getSpawnReason();
+
+        if (spawnType != MobSpawnType.SPAWNER && spawnType != MobSpawnType.NATURAL) {
+            return;
+        }
+
+        if (!(livingEntity instanceof Enemy)) {
+            return;
+        }
+
+
+        boolean beacon = findBeacon((ServerLevel) livingEntity.level,event.getX(),event.getY(),event.getZ());
+        if (beacon) {event.setResult(Event.Result.DENY);}
+
     }
 
     void registerBlock(RegistryEvent.Register<Block> event) {
         event.getRegistry().register(Init.BLOCK);
     }
 
+    void registerMobEffect(RegistryEvent.Register<MobEffect> event) {
+        event.getRegistry().register(Init.HOSTILITY_PURIFICATION);
+    }
 
     void registerBlockEntity(RegistryEvent.Register<BlockEntityType<?>> event) {
         event.getRegistry().register(Init.BLOCK_ENTITY);
+    }
+
+    void registerPOIType(RegistryEvent.Register<PoiType> event) {
+        event.getRegistry().register(Init.POI_TYPE);
+    }
+
+    public static boolean findBeacon(ServerLevel level, double x,double y,double z) {
+        PoiManager poimanager = level.getPoiManager();
+        Stream<PoiRecord> stream = poimanager.getInRange(type -> type == Init.POI_TYPE, new BlockPos(x,y,z), 224, PoiManager.Occupancy.ANY);
+        List<ReworkedBeaconBlockEntity> list = stream.map(PoiRecord::getPos).map(level::getBlockEntity).filter(Objects::nonNull).filter(blockEntity ->
+                        blockEntity instanceof ReworkedBeaconBlockEntity).map(ReworkedBeaconBlockEntity.class::cast)
+                .filter(blockEntity -> blockEntity.removeHostiles).toList();
+        for (ReworkedBeaconBlockEntity entity : list) {
+            int range = 32 * entity.levels;
+            if (entity.getBlockPos().distToCenterSqr(x,y,z) <= range * range) {
+             return true;
+            }
+        }
+        return false;
     }
 
     void registerItem(RegistryEvent.Register<Item> event) {
@@ -65,53 +140,3 @@ public class BeaconRework {
 
     }
 }
-//Construction:
-//     The blocks you use to build the beacon base will determine the effects you have access to. All effects can be available at once, provided that the minimum requirements for each effect are met.
-//
-//Building Blocks:
-//Copper - Jump Boost 1, Speed 1
-//Iron - Resistance 1, Haste 1
-//Emerald - Jump Boost 2, Strength 1
-//Gold - Haste 2, Strength 2
-//Diamond - Regeneration 2, Speed 2
-//Netherite - Strength 3, Haste 3
-//Enderite - Regeneration 3, Resistance 2
-//
-//     To receive the desired effect, at least one layer must be made entirely out of that block. The number of layers used will determine the beacon range. A layer made out of a mixture of blocks will provide no effect, but will still add to the range. Having 2 or more layers of the same block will provide no additional benefit, but will still add to the range.
-//
-//Layer Range:
-//1 - 32 blocks
-//2 - 64 blocks
-//3 - 96 blocks
-//4 - 128 blocks
-//5 - 160 blocks
-//6 - 192 blocks
-//7 - 224 blocks
-//---------------------------------------------------------------------------
-//Payment:
-//     Payment will determine how long the beacon is on for. After the time runs out, the beacon shuts off. There is no slot in the gui for payment, the player will instead right click on the beacon block with their choice of payment to activate it.
-//
-//Payment Types:
-//Copper Ingot - 16 minutes
-//Iron Ingot -  32 minutes
-//Emerald - 48 minutes
-//Gold Ingot - 64 minutes
-//Diamond - 80 minutes
-//Netherite Ingot - 96 minutes
-//Enderite Ingot - 112 minutes
-//---------------------------------------------------------------------------
-//Max Beacon:
-//     A max beacon will provide all effects simultaniously at max range, and is constructed as follows.
-//
-//Layers (top to bottom):
-//Beacon x1
-//Enderite block x9
-//Netherite block x25
-//Diamond block x49
-//Gold block x81
-//Emerald block x121
-//Iron block x169
-//Copper block x225
-//---------------------------------------------------------------------------
-//Other Changes:
-//Six Beacon Pyramid - This should no longer be possible.

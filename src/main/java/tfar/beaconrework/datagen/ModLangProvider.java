@@ -5,6 +5,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.item.Item;
@@ -24,6 +25,7 @@ public class ModLangProvider extends LanguageProvider {
     @Override
     protected void addTranslations() {
         addDefaultBlock(() -> Init.BLOCK);
+        addDefaultMobEffect(Init.HOSTILITY_PURIFICATION);
     }
 
     void addKey(KeyMapping mapping, String translation) {

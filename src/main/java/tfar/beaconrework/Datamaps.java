@@ -18,15 +18,24 @@ public class Datamaps {
 
     static {
         Datamaps.EFFECT_MAP.put(Blocks.COPPER_BLOCK,new MobEffectInstance(MobEffects.MOVEMENT_SPEED,200,1,true,true));
+        Datamaps.EFFECT_MAP.put(Blocks.EXPOSED_COPPER,new MobEffectInstance(MobEffects.MOVEMENT_SPEED,200,1,true,true));
+        Datamaps.EFFECT_MAP.put(Blocks.WEATHERED_COPPER,new MobEffectInstance(MobEffects.MOVEMENT_SPEED,200,1,true,true));
+        Datamaps.EFFECT_MAP.put(Blocks.OXIDIZED_COPPER,new MobEffectInstance(MobEffects.MOVEMENT_SPEED,200,1,true,true));
+
+        Datamaps.EFFECT_MAP.put(Blocks.WAXED_COPPER_BLOCK,new MobEffectInstance(MobEffects.MOVEMENT_SPEED,200,1,true,true));
+        Datamaps.EFFECT_MAP.put(Blocks.WAXED_EXPOSED_COPPER,new MobEffectInstance(MobEffects.MOVEMENT_SPEED,200,1,true,true));
+        Datamaps.EFFECT_MAP.put(Blocks.WAXED_WEATHERED_COPPER,new MobEffectInstance(MobEffects.MOVEMENT_SPEED,200,1,true,true));
+        Datamaps.EFFECT_MAP.put(Blocks.WAXED_OXIDIZED_COPPER,new MobEffectInstance(MobEffects.MOVEMENT_SPEED,200,1,true,true));
+
         Datamaps.EFFECT_MAP.put(Blocks.IRON_BLOCK,new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE,200,1,true,true));
         Datamaps.EFFECT_MAP.put(Blocks.EMERALD_BLOCK,new MobEffectInstance(MobEffects.NIGHT_VISION,400,0,true,true));
         Datamaps.EFFECT_MAP.put(Blocks.GOLD_BLOCK,new MobEffectInstance(MobEffects.REGENERATION,400,2,true,true));
-        Datamaps.EFFECT_MAP.put(Blocks.DIAMOND_BLOCK,new MobEffectInstance(MobEffects.DIG_SPEED,400,2,true,true));
+        Datamaps.EFFECT_MAP.put(Blocks.DIAMOND_BLOCK,new MobEffectInstance(MobEffects.DIG_SPEED,400,1,true,true));
         Datamaps.EFFECT_MAP.put(Blocks.NETHERITE_BLOCK,new MobEffectInstance(MobEffects.DAMAGE_BOOST,400,2,true,true));
         if (ModList.get().isLoaded("enderitemod")) {
             Block b = Registry.BLOCK.get(new ResourceLocation("enderitemod","enderite_block"));
             if (b != Blocks.AIR) {
-                Datamaps.EFFECT_MAP.put(b,new MobEffectInstance(MobEffects.JUMP,400,2,true,true));
+                Datamaps.EFFECT_MAP.put(b,new MobEffectInstance(Init.HOSTILITY_PURIFICATION,200,0,true,true));
             }
         }
     }

@@ -4,12 +4,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -17,9 +15,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.LockCode;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -27,10 +23,8 @@ import net.minecraft.world.level.block.entity.BeaconBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.fml.ModList;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -48,6 +42,7 @@ public class ReworkedBeaconBlockEntity extends BlockEntity {
     Set<BlockPos> occupied = new HashSet<>();
 
     long remainingTime;
+    public boolean removeHostiles;
 
     private static final int MAX_LEVELS = 7;
     /** A list of effects that beacons can apply. */
@@ -90,7 +85,6 @@ public class ReworkedBeaconBlockEntity extends BlockEntity {
 
         for(int i1 = 0; i1 < BLOCKS_CHECK_PER_TICK && blockpos.getY() <= l; ++i1) {
             BlockState blockstate = pLevel.getBlockState(blockpos);
-            Block block = blockstate.getBlock();
             float[] afloat = blockstate.getBeaconColorMultiplier(pLevel, blockpos, pPos);
             if (afloat != null) {
                 if (pBlockEntity.checkingBeamSections.size() <= 1) {
@@ -134,6 +128,9 @@ public class ReworkedBeaconBlockEntity extends BlockEntity {
 
                 for (Block block : pBlockEntity.currentBlocks) {
                     pBlockEntity.currentEffects.add(Datamaps.EFFECT_MAP.get(block));
+                    if(block.getRegistryName().getNamespace().equals("enderitemod")) {
+                        pBlockEntity.removeHostiles = true;
+                    }
                 }
 
             }
@@ -172,28 +169,11 @@ public class ReworkedBeaconBlockEntity extends BlockEntity {
 
         currentEffects.clear();
         currentBlocks.clear();
+        removeHostiles = false;
         occupied.clear();
 
         if (remainingTime<= 0) return 0;
 
-
-        Set<BlockPos> allOccupied = new HashSet<>();
-
-        if (BeaconReworkConfig.SERVER.antisharing.get() && false) {
-            ChunkPos center = new ChunkPos(getBlockPos());
-            for (int z = -1; z < 2;z++) {
-                for (int x = -1; x < 2;x++) {
-                    ChunkPos chunkPos = new ChunkPos(center.x+x,center.z+z);
-                    LevelChunk levelChunk = pLevel.getChunk(chunkPos.x,chunkPos.z);
-                    Map<BlockPos, BlockEntity> blockEntities = levelChunk.getBlockEntities();
-                    for (Map.Entry<BlockPos,BlockEntity> entry : blockEntities.entrySet()) {
-                        if (entry.getValue() instanceof ReworkedBeaconBlockEntity beaconBlockEntity && beaconBlockEntity != this) {
-                            allOccupied.addAll(beaconBlockEntity.occupied);
-                        }
-                    }
-                }
-            }
-        }
 
         for(int j = 1; j <= MAX_LEVELS; level = j++) {
             int y = pY - j;
@@ -210,14 +190,15 @@ public class ReworkedBeaconBlockEntity extends BlockEntity {
                     BlockPos pos = new BlockPos(x,y,z);
                     BlockState blockState = pLevel.getBlockState(pos);
 
-                    if (!blockState.is(BlockTags.BEACON_BASE_BLOCKS) || allOccupied.contains(pos)) {
+                    if (!blockState.is(BlockTags.BEACON_BASE_BLOCKS)) {
                         flag = completeLayer = false;
                         break;
                     } else {
                         occupied.add(pos);
                         if (block == null) {
                             block = blockState.getBlock();
-                        } else if (block != blockState.getBlock()) {
+                        } else if (block != blockState.getBlock() && !(
+                                block.defaultBlockState().is(BeaconRework.FULL_COPPER_BLOCKS) && blockState.is(BeaconRework.FULL_COPPER_BLOCKS))) {
                             completeLayer = false;
                         }
                     }
@@ -264,7 +245,9 @@ public class ReworkedBeaconBlockEntity extends BlockEntity {
     @Override
     public void setChanged() {
         super.setChanged();
-        level.sendBlockUpdated(getBlockPos(),getBlockState(),getBlockState(),3);
+        if (level != null) {
+            level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), 3);
+        }
     }
 
     public static void playSound(Level pLevel, BlockPos pPos, SoundEvent pSound) {
