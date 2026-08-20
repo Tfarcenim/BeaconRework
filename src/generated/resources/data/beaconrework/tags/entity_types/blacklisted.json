@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "#ps1packtweaks:midnight_lurkers",
+      "required": false
+    }
+  ]
+}

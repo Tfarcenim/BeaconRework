@@ -71,9 +71,14 @@ public class BeaconRework {
         }
     }
 
+    public static ResourceLocation id(String pName) {
+        return new ResourceLocation(MOD_ID, pName);
+    }
+
     void livingTick(LivingEvent.LivingUpdateEvent event) {
         LivingEntity entity = event.getEntityLiving();
-        if (entity.level.isClientSide || entity.tickCount % 20 != 0 || !(entity instanceof Enemy)) {
+        if (entity.level.isClientSide || entity.tickCount % 20 != 0 || !(entity instanceof Enemy) ||
+                entity.getType().is(BeaconReworkEntityTags.BLACKLISTED)) {
             return;
         }
 
